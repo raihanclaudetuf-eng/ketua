@@ -112,14 +112,16 @@ function compressImage(file){
   });
 }
 
-function renderSetup(){
+function renderSetup(existing){
+  const isEdit = existing && existing.length > 0;
   app.innerHTML = `
     <p style="font-size:13.5px;color:var(--ink-soft);margin:0 0 18px;line-height:1.6;">
-      Belum ada kandidat terdaftar. Masukkan nama-nama kandidat ketua Mangestic untuk membuka surat suara.
+      ${isEdit ? 'Ubah data kandidat di bawah ini.' : 'Masukkan nama-nama kandidat ketua Mangestic untuk membuka surat suara.'}
     </p>
+    ${isEdit ? `<p style="font-size:12px;color:var(--gold);margin:-10px 0 18px;">Menyimpan perubahan akan mereset seluruh suara yang sudah masuk.</p>` : ''}
     <div id="setup-rows"></div>
     <button class="add-candidate-btn" id="add-row">+ Tambah kandidat</button>
-    <button class="btn-pilih" id="save-setup" style="width:100%;padding:12px;">Buka surat suara</button>
+    <button class="btn-pilih" id="save-setup" style="width:100%;padding:12px;">${isEdit ? 'Simpan perubahan' : 'Buka surat suara'}</button>
   `;
   const rows = document.getElementById('setup-rows');
   let rowCount = 0;
@@ -157,7 +159,11 @@ function renderSetup(){
       div.querySelector('.photo-preview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
     });
   }
-  addRow(); addRow();
+  if(isEdit){
+    existing.forEach(c => addRow(c.name, c.visi, c.photo));
+  }else{
+    addRow(); addRow();
+  }
 
   rows.addEventListener('click', (e)=>{
     if(e.target.dataset.remove){
@@ -185,6 +191,15 @@ function renderSetup(){
     await saveVotes({});
     await init();
   });
+}
+
+function renderWaiting(){
+  app.innerHTML = `
+    <div class="status-banner"><span class="dot"></span>Surat suara belum dibuka</div>
+    <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.6;text-align:center;padding:16px 0 8px;">
+      Panitia belum menambahkan kandidat. Silakan periksa kembali nanti.
+    </p>
+  `;
 }
 
 function renderVoting(){
@@ -301,7 +316,12 @@ function openAdmin(){
   document.getElementById('submit-admin').addEventListener('click', ()=>{
     const val = document.getElementById('admin-pass').value;
     if(val === ADMIN_PASS){
-      renderAdminPanel();
+      closeOverlay();
+      if(candidates.length === 0){
+        renderSetup();
+      }else{
+        renderAdminPanel();
+      }
     }else{
       alert('Kata sandi salah.');
     }
@@ -325,6 +345,7 @@ function renderAdminPanel(){
         <div class="modal-actions" style="justify-content:space-between;">
           <button class="btn-secondary" id="reset-all">Reset kandidat &amp; suara</button>
           <div style="display:flex;gap:10px;">
+            <button class="btn-secondary" id="edit-candidates">Edit kandidat</button>
             <button class="btn-secondary" id="close-admin">Tutup</button>
           </div>
         </div>
@@ -332,6 +353,10 @@ function renderAdminPanel(){
     </div>
   `;
   document.getElementById('close-admin').addEventListener('click', closeOverlay);
+  document.getElementById('edit-candidates').addEventListener('click', ()=>{
+    closeOverlay();
+    renderSetup(candidates);
+  });
   document.getElementById('reset-all').addEventListener('click', async ()=>{
     if(!confirm('Yakin ingin menghapus semua kandidat dan suara? Tindakan ini tidak dapat dibatalkan.')) return;
     await db.collection('mangestic').doc('candidates').delete();
@@ -353,7 +378,7 @@ async function init(){
   votes = await loadVotes();
 
   if(candidates.length === 0){
-    renderSetup();
+    renderWaiting();
     return;
   }
 
