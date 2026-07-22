@@ -308,7 +308,10 @@ function openAdmin(){
       <div class="modal">
         <h3>Kelola pemilihan</h3>
         <p>Masukkan kata sandi admin untuk melanjutkan.</p>
-        <input type="password" id="admin-pass" placeholder="Kata sandi">
+        <div style="position:relative;">
+          <input type="password" id="admin-pass" placeholder="Kata sandi" style="padding-right:78px;">
+          <button type="button" id="toggle-pass" style="position:absolute;right:8px;top:9px;background:none;border:none;color:var(--ink-soft);font-size:10.5px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;cursor:pointer;">TAMPILKAN</button>
+        </div>
         <div class="modal-actions">
           <button class="btn-secondary" id="cancel-admin">Batal</button>
           <button class="btn-pilih" id="submit-admin">Masuk</button>
@@ -317,6 +320,17 @@ function openAdmin(){
     </div>
   `;
   document.getElementById('cancel-admin').addEventListener('click', closeOverlay);
+  document.getElementById('toggle-pass').addEventListener('click', ()=>{
+    const inp = document.getElementById('admin-pass');
+    const btn = document.getElementById('toggle-pass');
+    if(inp.type === 'password'){
+      inp.type = 'text';
+      btn.textContent = 'SEMBUNYIKAN';
+    }else{
+      inp.type = 'password';
+      btn.textContent = 'TAMPILKAN';
+    }
+  });
   document.getElementById('submit-admin').addEventListener('click', ()=>{
     const val = document.getElementById('admin-pass').value;
     if(val === ADMIN_PASS){
