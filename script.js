@@ -1,7 +1,3 @@
-/* ====================================================================
-   GANTI BAGIAN INI dengan konfigurasi proyek Firebase Anda sendiri.
-   Ambil dari: Firebase Console > Project settings > General > Your apps
-   ==================================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyBzCxRSat6Ll8Pv5TIVmNCm3UN_6xN7zXs",
   authDomain: "mangestic-voting.firebaseapp.com",
@@ -13,7 +9,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-const ADMIN_PASS = 'mangestic2026';
+const ADMIN_PASS = 'm4n93st1c26';
 
 async function getFingerprint(){
   const parts = [
@@ -74,6 +70,14 @@ async function getVotedKey(fp){
 }
 async function setVotedKey(fp, candidateId){
   await db.collection('voted').doc(fp).set({ candidateId, ts: Date.now() });
+}
+async function clearVotedMarkers(){
+  try{
+    const snap = await db.collection('voted').get();
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }catch(e){ console.error(e); }
 }
 
 const app = document.getElementById('app');
@@ -342,12 +346,17 @@ function renderAdminPanel(){
         <h3>Panel admin</h3>
         <div style="margin-bottom:16px;">${list || '<p style="font-size:13px;color:var(--ink-soft);">Belum ada kandidat.</p>'}</div>
         <p style="font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;margin-bottom:18px;">Total: ${total} suara</p>
+        <p style="font-size:11px;color:var(--ink-soft);line-height:1.6;margin:-6px 0 14px;">
+          <strong style="color:var(--ink);">Reset pemilihan</strong>: hapus semua suara, kandidat tetap sama, pemilih bisa memilih ulang.<br>
+          <strong style="color:var(--ink);">Reset kandidat</strong>: hapus kandidat &amp; semua suara, mulai dari awal.
+        </p>
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+          <button class="btn-secondary" id="reset-votes" style="flex:1;">Reset pemilihan</button>
+          <button class="btn-secondary" id="reset-candidates" style="flex:1;">Reset kandidat</button>
+        </div>
         <div class="modal-actions" style="justify-content:space-between;">
-          <button class="btn-secondary" id="reset-all">Reset kandidat &amp; suara</button>
-          <div style="display:flex;gap:10px;">
-            <button class="btn-secondary" id="edit-candidates">Edit kandidat</button>
-            <button class="btn-secondary" id="close-admin">Tutup</button>
-          </div>
+          <button class="btn-secondary" id="edit-candidates">Edit kandidat</button>
+          <button class="btn-secondary" id="close-admin">Tutup</button>
         </div>
       </div>
     </div>
@@ -357,10 +366,20 @@ function renderAdminPanel(){
     closeOverlay();
     renderSetup(candidates);
   });
-  document.getElementById('reset-all').addEventListener('click', async ()=>{
-    if(!confirm('Yakin ingin menghapus semua kandidat dan suara? Tindakan ini tidak dapat dibatalkan.')) return;
+  document.getElementById('reset-votes').addEventListener('click', async ()=>{
+    if(!confirm('Yakin ingin mereset hasil pemilihan? Semua suara akan dihapus dan pemilih bisa memilih ulang. Kandidat tidak berubah.')) return;
+    await db.collection('mangestic').doc('votes').delete();
+    await clearVotedMarkers();
+    votes = {};
+    votedFor = null;
+    closeOverlay();
+    await init();
+  });
+  document.getElementById('reset-candidates').addEventListener('click', async ()=>{
+    if(!confirm('Yakin ingin menghapus semua kandidat dan suara? Panitia perlu mengisi ulang kandidat dari awal.')) return;
     await db.collection('mangestic').doc('candidates').delete();
     await db.collection('mangestic').doc('votes').delete();
+    await clearVotedMarkers();
     candidates = [];
     votes = {};
     votedFor = null;
