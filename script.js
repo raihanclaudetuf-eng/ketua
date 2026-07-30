@@ -220,7 +220,7 @@ function renderVoting(){
   `).join('');
   app.innerHTML = `
     <div class="status-banner"><span class="dot"></span>Surat suara terbuka &mdash; pilih satu kandidat</div>
-    <div class="candidates-grid">${cards}</div>
+    <div class="candidates-grid${candidates.length === 3 ? ' grid-3' : ''}">${cards}</div>
   `;
   app.querySelectorAll('[data-vote]').forEach(btn=>{
     btn.addEventListener('click', ()=> confirmVote(btn.dataset.vote));
