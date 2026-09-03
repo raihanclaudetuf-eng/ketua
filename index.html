@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="id" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Wudhu Water Analyzer (SWWA)</title>
+
+    <!-- Tailwind CSS, Chart.js, & Lucide Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              slateDark: {
+                950: "#070D14",
+                900: "#0B1522",
+                850: "#0F1D2E",
+                800: "#14263D",
+                700: "#1D3554",
+                600: "#2A4A73",
+              },
+              ocean: {
+                glow: "#06B6D4",
+                core: "#0284C7",
+                deep: "#0369A1",
+                accent: "#38BDF8",
+              },
+              gold: {
+                subtle: "#FBBF24",
+                warm: "#D97706",
+              },
+              sand: "#F1F5F9",
+            },
+            fontFamily: {
+              display: ["Poppins", "sans-serif"],
+              body: ["Inter", "sans-serif"],
+              mono: ["Space Mono", "monospace"],
+              arabic: ["Amiri", "serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body class="font-body min-h-screen lattice">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 pb-16">
+      <!-- ================= HEADER (STICKY) ================= -->
+      <header
+        class="sticky top-0 z-40 pt-5 pb-4 px-5 sm:px-8 -mx-5 sm:-mx-8 bg-slateDark-950/85 backdrop-blur-md flex flex-col md:flex-row md:items-end md:justify-between gap-5 border-b border-slateDark-700 transition-all shadow-md shadow-black/20"
+      >
+        <div class="flex items-start gap-4">
+          <div
+            class="relative shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-ocean-deep to-slateDark-900 grain-border flex items-center justify-center shadow-lg shadow-cyan-950/40"
+          >
+            <i data-lucide="droplets" class="w-6 h-6 text-ocean-glow"></i>
+          </div>
+          <div>
+            <h1
+              class="font-display font-700 text-2xl sm:text-3xl text-sand tracking-tight"
+            >
+              Smart Wudhu Water Analyzer
+            </h1>
+            <p
+              class="text-sm sm:text-[15px] text-sand/65 mt-1 max-w-xl leading-relaxed"
+            >
+              Sistem Monitoring Fisik &amp; Index Kelayakan Air Wudhu Berbasis
+              IoT ESP32-S3
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0">
+          <div
+            class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slateDark-850 grain-border"
+          >
+            <span
+              id="conn-dot"
+              class="w-2.5 h-2.5 rounded-full bg-ocean-glow status-pulse"
+            ></span>
+            <span
+              id="conn-label"
+              class="text-xs font-semibold text-ocean-glow font-mono"
+              >ONLINE</span
+            >
+          </div>
+          <div class="text-right leading-tight">
+            <div class="text-[11px] text-sand/40 font-mono">
+              pembacaan terakhir
+            </div>
+            <div id="last-reading" class="text-sm text-sand/80 font-mono">
+              --:--:--
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ================= TAB NAVIGATION ================= -->
+      <nav class="flex gap-2 mt-6 border-b border-slateDark-700 pb-0">
+        <button
+          id="tab-btn-dashboard"
+          class="tab-btn active flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all"
+        >
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          Dashboard &amp; Kelayakan
+        </button>
+        <button
+          id="tab-btn-hadits"
+          class="tab-btn flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-sand/60 hover:text-sand rounded-t-xl transition-all"
+        >
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          Dalil &amp; Hadits Air Wudhu
+        </button>
+      </nav>
+
+      <!-- ================= TAB 1: DASHBOARD ================= -->
+      <div id="view-dashboard" class="block">
+        <!-- HERO STATUS + INDEX KELAYAKAN WUDHU -->
+        <section class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Status Sensor -->
+          <div
+            id="hero-card"
+            class="lg:col-span-2 relative overflow-hidden rounded-2xl grain-border bg-slateDark-850/90 p-6 sm:p-7 flex flex-col justify-between shadow-xl"
+          >
+            <div
+              class="absolute -right-10 -top-10 w-60 h-60 rounded-full blur-3xl opacity-20"
+              id="hero-glow"
+              style="background: #06b6d4"
+            ></div>
+            <div>
+              <div class="flex items-center gap-4">
+                <div
+                  id="hero-icon-ring"
+                  class="status-pulse w-14 h-14 rounded-2xl bg-ocean-core/20 grain-border flex items-center justify-center shrink-0"
+                >
+                  <i
+                    data-lucide="shield-check"
+                    id="hero-icon"
+                    class="w-7 h-7 text-ocean-glow"
+                  ></i>
+                </div>
+                <div>
+                  <div
+                    class="text-[11px] tracking-wide text-sand/45 font-mono mb-0.5"
+                  >
+                    status anomali sensor
+                  </div>
+                  <h2
+                    id="hero-title"
+                    class="font-display font-700 text-lg sm:text-xl text-ocean-glow leading-tight"
+                  >
+                    NORMAL — Karakteristik Mutlak Terjaga
+                  </h2>
+                  <p
+                    id="hero-desc"
+                    class="text-xs sm:text-sm text-sand/70 mt-1"
+                  >
+                    Kekeruhan dan uap gas berada dalam baseline air wudhu suci
+                    lagi menyucikan.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                class="mt-5 flex gap-8 pt-4 border-t border-slateDark-700/70"
+              >
+                <div>
+                  <div class="text-[11px] text-sand/40 font-mono">
+                    tingkat penyimpangan
+                  </div>
+                  <div
+                    id="hero-deviation"
+                    class="font-display text-xl text-sand mt-0.5"
+                  >
+                    Rendah (5%)
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[11px] text-sand/40 font-mono">
+                    parameter menyimpang
+                  </div>
+                  <div
+                    id="hero-deviant"
+                    class="font-display text-xl text-sand mt-0.5"
+                  >
+                    0 / 3
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-sand/40 mt-4 leading-relaxed">
+              *Analisis berbasis komputasi edge ESP32-S3 terhadap parameter
+              kekeruhan (NTU) dan uap gas organik.
+            </p>
+          </div>
+
+          <!-- Index Kelayakan Wudhu -->
+          <div
+            id="wudhu-index-card"
+            class="rounded-2xl grain-border bg-slateDark-850/95 p-6 flex flex-col justify-between shadow-xl relative overflow-hidden"
+          >
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-mono text-sand/50 tracking-wider">
+                INDEX KELAYAKAN WUDHU
+              </div>
+              <span
+                id="wudhu-status-badge"
+                class="px-2.5 py-1 text-xs font-bold rounded-full bg-ocean-core/20 text-ocean-glow border border-ocean-glow/30"
+              >
+                LAYAK
+              </span>
+            </div>
+
+            <div class="my-4">
+              <div class="flex items-baseline gap-1">
+                <span
+                  id="wudhu-score"
+                  class="font-display font-800 text-5xl text-sand tracking-tight"
+                  >98</span
+                >
+                <span class="text-lg font-bold text-sand/40">%</span>
+              </div>
+              <div
+                id="wudhu-verdict-title"
+                class="text-sm font-semibold text-ocean-accent mt-1"
+              >
+                Air Suci &amp; Menyucikan (Mutlak)
+              </div>
+              <p
+                id="wudhu-verdict-desc"
+                class="text-xs text-sand/60 mt-1 leading-relaxed"
+              >
+                Tidak terdeteksi indikasi najis atau kekeruhan pekat. Sah
+                digunakan untuk wudhu dan bersuci.
+              </p>
+            </div>
+
+            <div>
+              <div class="h-2.5 rounded-full meter-track overflow-hidden">
+                <div
+                  id="wudhu-progress"
+                  class="h-full rounded-full bg-ocean-glow transition-all duration-700"
+                  style="width: 98%"
+                ></div>
+              </div>
+              <div
+                class="flex justify-between text-[10px] text-sand/40 font-mono mt-2"
+              >
+                <span>Tidak Layak (&lt;50)</span>
+                <span>Syubhat (50-79)</span>
+                <span>Layak (&ge;80)</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- METRIC SENSORS -->
+        <section class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Turbidity -->
+          <div
+            class="rounded-2xl grain-border bg-slateDark-850/80 p-5 flex flex-col hover:border-ocean-glow/40 transition-all"
+          >
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="w-9 h-9 rounded-lg bg-ocean-core/20 flex items-center justify-center"
+                >
+                  <i data-lucide="waves" class="w-5 h-5 text-ocean-glow"></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-sand">
+                    Kejernihan Air
+                  </div>
+                  <div class="text-[11px] text-sand/40 font-mono">
+                    Turbidity · SEN0189
+                  </div>
+                </div>
+              </div>
+              <span
+                id="turb-badge"
+                class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-ocean-core/20 text-ocean-glow"
+                >Normal</span
+              >
+            </div>
+
+            <div class="mt-5 flex items-end gap-2">
+              <span id="turb-value" class="font-display text-3xl text-sand"
+                >2.4</span
+              >
+              <span class="text-sm text-sand/45 mb-1">NTU</span>
+            </div>
+            <div class="text-xs text-sand/40 font-mono mt-1">
+              tegangan analog: <span id="turb-volt">3.12</span> V
+            </div>
+
+            <div class="mt-4 h-2 rounded-full meter-track overflow-hidden">
+              <div
+                id="turb-bar"
+                class="h-full rounded-full bg-ocean-glow transition-all duration-700"
+                style="width: 18%"
+              ></div>
+            </div>
+
+            <div
+              class="mt-4 pt-3 border-t border-slateDark-700/60 text-[11px] text-sand/45 italic"
+            >
+              Kaidah: Sifat Warna (Al-Laun)
+            </div>
+          </div>
+
+          <!-- MQ-135 -->
+          <div
+            class="rounded-2xl grain-border bg-slateDark-850/80 p-5 flex flex-col hover:border-ocean-glow/40 transition-all"
+          >
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="w-9 h-9 rounded-lg bg-ocean-core/20 flex items-center justify-center"
+                >
+                  <i data-lucide="wind" class="w-5 h-5 text-ocean-glow"></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-sand">
+                    Bau Organik / Najis
+                  </div>
+                  <div class="text-[11px] text-sand/40 font-mono">
+                    Gas Array · MQ-135
+                  </div>
+                </div>
+              </div>
+              <span
+                id="mq135-badge"
+                class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-ocean-core/20 text-ocean-glow"
+                >Normal</span
+              >
+            </div>
+
+            <div class="mt-5 flex items-end gap-2">
+              <span id="mq135-value" class="font-display text-3xl text-sand"
+                >1.08</span
+              >
+              <span class="text-sm text-sand/45 mb-1">Rs/Ro</span>
+            </div>
+            <div class="text-xs text-sand/40 font-mono mt-1">
+              level gas amonia: <span id="mq135-level">rendah</span>
+            </div>
+
+            <div class="mt-4 h-2 rounded-full meter-track overflow-hidden">
+              <div
+                id="mq135-bar"
+                class="h-full rounded-full bg-ocean-glow transition-all duration-700"
+                style="width: 14%"
+              ></div>
+            </div>
+
+            <div
+              class="mt-4 pt-3 border-t border-slateDark-700/60 text-[11px] text-sand/45 italic"
+            >
+              Kaidah: Sifat Bau (Ar-Rih) — Limbah/Kotoran
+            </div>
+          </div>
+
+          <!-- MQ-3 -->
+          <div
+            class="rounded-2xl grain-border bg-slateDark-850/80 p-5 flex flex-col hover:border-ocean-glow/40 transition-all"
+          >
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="w-9 h-9 rounded-lg bg-ocean-core/20 flex items-center justify-center"
+                >
+                  <i
+                    data-lucide="flask-conical"
+                    class="w-5 h-5 text-ocean-glow"
+                  ></i>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-sand">
+                    Bau Fermentasi / Genangan
+                  </div>
+                  <div class="text-[11px] text-sand/40 font-mono">
+                    Gas Array · MQ-3
+                  </div>
+                </div>
+              </div>
+              <span
+                id="mq3-badge"
+                class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-ocean-core/20 text-ocean-glow"
+                >Normal</span
+              >
+            </div>
+
+            <div class="mt-5 flex items-end gap-2">
+              <span id="mq3-value" class="font-display text-3xl text-sand"
+                >0.92</span
+              >
+              <span class="text-sm text-sand/45 mb-1">Rs/Ro</span>
+            </div>
+            <div class="text-xs text-sand/40 font-mono mt-1">
+              uap kimiawi: <span id="mq3-level">rendah</span>
+            </div>
+
+            <div class="mt-4 h-2 rounded-full meter-track overflow-hidden">
+              <div
+                id="mq3-bar"
+                class="h-full rounded-full bg-ocean-glow transition-all duration-700"
+                style="width: 11%"
+              ></div>
+            </div>
+
+            <div
+              class="mt-4 pt-3 border-t border-slateDark-700/60 text-[11px] text-sand/45 italic"
+            >
+              Kaidah: Sifat Bau (Ar-Rih) — Pembusukan
+            </div>
+          </div>
+        </section>
+
+        <!-- CHART -->
+        <section
+          class="mt-6 rounded-2xl grain-border bg-slateDark-850/80 p-5 sm:p-6"
+        >
+          <div
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4"
+          >
+            <div>
+              <h3 class="font-display font-600 text-lg text-sand">
+                Tren Real-Time Sensor
+              </h3>
+              <p class="text-xs text-sand/40 mt-0.5">
+                20 titik data terakhir dari pembacaan ESP32-S3
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                id="sim-toggle"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-ocean-glow text-slateDark-950 text-sm font-semibold hover:bg-ocean-accent transition-all"
+              >
+                <i
+                  data-lucide="play"
+                  id="sim-icon"
+                  style="width: 16px; height: 16px"
+                ></i>
+                <span id="sim-label">Mulai Simulasi</span>
+              </button>
+            </div>
+          </div>
+          <div class="relative h-72">
+            <canvas id="trend-chart"></canvas>
+          </div>
+        </section>
+
+        <!-- SCENARIOS -->
+        <section
+          class="mt-6 rounded-2xl grain-border bg-slateDark-850/80 p-5 sm:p-6"
+        >
+          <h3 class="font-display font-600 text-lg text-sand mb-1">
+            Simulasi Pengujian Sidang TA
+          </h3>
+          <p class="text-xs text-sand/40 mb-4">
+            Klik skenario untuk menguji respons Index Kelayakan &amp; Notifikasi
+            Peringatan Otomatis
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <button
+              data-scenario="normal"
+              class="scenario-btn active text-left px-4 py-3.5 rounded-xl border border-slateDark-700 bg-slateDark-900/80 hover:border-ocean-glow/60 transition-colors"
+            >
+              <i
+                data-lucide="check-circle-2"
+                style="width: 18px; height: 18px"
+                class="text-ocean-glow mb-2"
+              ></i>
+              <div class="text-sm font-semibold text-sand">
+                Air Mutlak (Normal)
+              </div>
+              <div class="text-[11px] text-sand/40 mt-0.5">
+                Penyimpangan Rendah (Layak)
+              </div>
+            </button>
+
+            <button
+              data-scenario="tanah"
+              class="scenario-btn text-left px-4 py-3.5 rounded-xl border border-slateDark-700 bg-slateDark-900/80 hover:border-ocean-glow/60 transition-colors"
+            >
+              <i
+                data-lucide="mountain"
+                style="width: 18px; height: 18px"
+                class="text-sand/60 mb-2"
+              ></i>
+              <div class="text-sm font-semibold text-sand">Keruh / Tanah</div>
+              <div class="text-[11px] text-sand/40 mt-0.5">
+                Penyimpangan Sedang (Syubhat)
+              </div>
+            </button>
+
+            <button
+              data-scenario="amonia"
+              class="scenario-btn text-left px-4 py-3.5 rounded-xl border border-slateDark-700 bg-slateDark-900/80 hover:border-ocean-glow/60 transition-colors"
+            >
+              <i
+                data-lucide="spray-can"
+                style="width: 18px; height: 18px"
+                class="text-sand/60 mb-2"
+              ></i>
+              <div class="text-sm font-semibold text-sand">
+                Bau Amonia / Limbah
+              </div>
+              <div class="text-[11px] text-red-400 mt-0.5">
+                Penyimpangan Tinggi (Pop-up Keluar)
+              </div>
+            </button>
+
+            <button
+              data-scenario="fermentasi"
+              class="scenario-btn text-left px-4 py-3.5 rounded-xl border border-slateDark-700 bg-slateDark-900/80 hover:border-ocean-glow/60 transition-colors"
+            >
+              <i
+                data-lucide="beaker"
+                style="width: 18px; height: 18px"
+                class="text-sand/60 mb-2"
+              ></i>
+              <div class="text-sm font-semibold text-sand">
+                Fermentasi / Busuk
+              </div>
+              <div class="text-[11px] text-red-400 mt-0.5">
+                Penyimpangan Tinggi (Pop-up Keluar)
+              </div>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ================= TAB 2: HADITS ================= -->
+      <div id="view-hadits" class="hidden mt-6 space-y-6">
+        <div
+          class="p-6 sm:p-8 rounded-2xl grain-border bg-slateDark-850/80 relative overflow-hidden"
+        >
+          <div class="max-w-2xl">
+            <span
+              class="text-xs font-mono px-3 py-1 rounded-full bg-gold-warm/20 text-gold-subtle border border-gold-warm/30"
+            >
+              Landasan Syariat Thaharah
+            </span>
+            <h2
+              class="text-2xl sm:text-3xl font-display font-700 text-sand mt-3"
+            >
+              Dalil Hadits &amp; Kaidah Fikih Air Wudhu
+            </h2>
+            <p class="text-sm text-sand/70 mt-2 leading-relaxed">
+              Dalam mazhab fikih (khususnya Syafi'iyah), air yang sah untuk
+              bersuci adalah <strong>air mutlak</strong>. Parameter alat ini
+              dirancang memantau dua sifat fisik yang paling rentan berubah saat
+              kontaminasi terjadi: bau (*ar-rih*) dan kejernihan/warna
+              (*al-laun*).
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Hadits 1 -->
+          <div
+            class="p-6 rounded-2xl grain-border bg-slateDark-850/70 flex flex-col justify-between hover:border-ocean-glow/40 transition-colors"
+          >
+            <div>
+              <div
+                class="flex items-center justify-between pb-3 border-b border-slateDark-700"
+              >
+                <span class="text-xs font-mono text-ocean-accent"
+                  >HR. Abu Dawud No. 67</span
+                >
+                <span
+                  class="text-[11px] px-2 py-0.5 rounded bg-slateDark-750 text-sand/50"
+                  >Hadits Hasan Shahih</span
+                >
+              </div>
+              <p
+                class="font-arabic text-right text-xl leading-loose text-sand/90 my-4 dir-rtl"
+              >
+                « إِنَّ الْمَاءَ طَهُورٌ لَا يُنَجِّسُهُ شَيْءٌ »
+              </p>
+              <p class="text-sm text-sand/80 italic mb-3">
+                "Sesungguhnya air itu suci lagi menyucikan, tidak ada sesuatu
+                pun yang dapat menajiskannya."
+              </p>
+              <div
+                class="text-xs text-sand/50 bg-slateDark-900/60 p-3 rounded-xl border border-slateDark-700/60"
+              >
+                <strong>Penjelasan Fikih:</strong> Air tetap suci selama tidak
+                mengalami perubahan pada salah satu dari tiga sifatnya: rasa,
+                bau, atau warna akibat terkena benda najis.
+              </div>
+            </div>
+          </div>
+
+          <!-- Hadits 2 -->
+          <div
+            class="p-6 rounded-2xl grain-border bg-slateDark-850/70 flex flex-col justify-between hover:border-ocean-glow/40 transition-colors"
+          >
+            <div>
+              <div
+                class="flex items-center justify-between pb-3 border-b border-slateDark-700"
+              >
+                <span class="text-xs font-mono text-ocean-accent"
+                  >HR. Abu Dawud No. 83</span
+                >
+                <span
+                  class="text-[11px] px-2 py-0.5 rounded bg-slateDark-750 text-sand/50"
+                  >Hadits Shahih</span
+                >
+              </div>
+              <p
+                class="font-arabic text-right text-xl leading-loose text-sand/90 my-4 dir-rtl"
+              >
+                « هُوَ الطَّهُورُ مَاؤُهُ الْحِلُّ مَيْتَتُهُ »
+              </p>
+              <p class="text-sm text-sand/80 italic mb-3">
+                "Laut itu suci airnya dan halal bangkainya."
+              </p>
+              <div
+                class="text-xs text-sand/50 bg-slateDark-900/60 p-3 rounded-xl border border-slateDark-700/60"
+              >
+                <strong>Penjelasan Fikih:</strong> Air yang berasal dari alam
+                secara orisinal berstatus mutlak dan menyucikan meskipun
+                memiliki karakteristik khas aslinya.
+              </div>
+            </div>
+          </div>
+
+          <!-- Hadits 3 -->
+          <div
+            class="p-6 rounded-2xl grain-border bg-slateDark-850/70 flex flex-col justify-between hover:border-ocean-glow/40 transition-colors"
+          >
+            <div>
+              <div
+                class="flex items-center justify-between pb-3 border-b border-slateDark-700"
+              >
+                <span class="text-xs font-mono text-ocean-accent"
+                  >HR. Ibnu Majah No. 425</span
+                >
+                <span
+                  class="text-[11px] px-2 py-0.5 rounded bg-slateDark-750 text-sand/50"
+                  >Larangan Israf</span
+                >
+              </div>
+              <p
+                class="font-arabic text-right text-xl leading-loose text-sand/90 my-4 dir-rtl"
+              >
+                « لَا تُسْرِفْ فِي الْمَاءِ وَإِنْ كُنْتَ عَلَى نَهْرٍ جَارٍ »
+              </p>
+              <p class="text-sm text-sand/80 italic mb-3">
+                "Janganlah kamu berlebih-lebihan (boros) dalam menggunakan air,
+                meskipun kamu berada di sungai yang mengalir."
+              </p>
+              <div
+                class="text-xs text-sand/50 bg-slateDark-900/60 p-3 rounded-xl border border-slateDark-700/60"
+              >
+                <strong>Korelasi IoT:</strong> Sistem monitoring mencegah
+                terbuangnya air wudhu dalam jumlah besar akibat keraguan
+                kualitas air pada tandon penampungan masjid.
+              </div>
+            </div>
+          </div>
+
+          <!-- Hadits 4 -->
+          <div
+            class="p-6 rounded-2xl grain-border bg-slateDark-850/70 flex flex-col justify-between hover:border-ocean-glow/40 transition-colors"
+          >
+            <div>
+              <div
+                class="flex items-center justify-between pb-3 border-b border-slateDark-700"
+              >
+                <span class="text-xs font-mono text-ocean-accent"
+                  >HR. Abu Dawud No. 63</span
+                >
+                <span
+                  class="text-[11px] px-2 py-0.5 rounded bg-slateDark-750 text-sand/50"
+                  >Volume Air</span
+                >
+              </div>
+              <p
+                class="font-arabic text-right text-xl leading-loose text-sand/90 my-4 dir-rtl"
+              >
+                « إِذَا كَانَ الْمَاءُ قُلَّتَيْنِ لَمْ يَحْمِلِ الْخَبَثَ »
+              </p>
+              <p class="text-sm text-sand/80 italic mb-3">
+                "Jika air telah mencapai dua qullah (±216 liter), maka air
+                tersebut tidak mengandung najis (tidak mudah ternajisi selama
+                sifatnya tidak berubah)."
+              </p>
+              <div
+                class="text-xs text-sand/50 bg-slateDark-900/60 p-3 rounded-xl border border-slateDark-700/60"
+              >
+                <strong>Kaidah Fikih:</strong> Bak air wudhu bervolume besar
+                tetap suci dan boleh dipakai kecuali jika perubahan nyata
+                terdeteksi pada bau, rasa, atau warnanya.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Integrasi Sensor -->
+        <div class="p-6 rounded-2xl grain-border bg-slateDark-850/90 mt-6">
+          <h3
+            class="text-lg font-display font-600 text-sand mb-4 flex items-center gap-2"
+          >
+            <i data-lucide="cpu" class="w-5 h-5 text-ocean-glow"></i>
+            Pemetaan Sensor IoT SWWA terhadap Kaidah Thaharah
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slateDark-700 text-sand/60">
+                  <th class="py-3 px-4 font-mono uppercase">Sifat Fikih</th>
+                  <th class="py-3 px-4 font-mono uppercase">Indra</th>
+                  <th class="py-3 px-4 font-mono uppercase">Sensor IoT</th>
+                  <th class="py-3 px-4 font-mono uppercase">
+                    Korelasi Deteksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slateDark-700/60 text-sand/80">
+                <tr>
+                  <td class="py-3 px-4 font-semibold text-ocean-accent">
+                    Al-Laun (اللون) - Warna / Keruh
+                  </td>
+                  <td class="py-3 px-4">Mata</td>
+                  <td class="py-3 px-4 font-mono text-sand">
+                    Turbidity SEN0189
+                  </td>
+                  <td class="py-3 px-4">
+                    Mendeteksi kekeruhan akibat partikel lumpur atau endapan
+                    yang mengubah warna alami air.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-semibold text-ocean-accent">
+                    Ar-Rih (الريح) - Bau Najis/Organik
+                  </td>
+                  <td class="py-3 px-4">Hidung</td>
+                  <td class="py-3 px-4 font-mono text-sand">MQ-135</td>
+                  <td class="py-3 px-4">
+                    Mendeteksi gas amonia ($NH_3$), sulfida, dan gas limbah dari
+                    udara di atas permukaan air.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-semibold text-ocean-accent">
+                    Ar-Rih (الريح) - Bau Fermentasi
+                  </td>
+                  <td class="py-3 px-4">Hidung</td>
+                  <td class="py-3 px-4 font-mono text-sand">MQ-3</td>
+                  <td class="py-3 px-4">
+                    Mendeteksi uap alkohol/senyawa ester hasil dekomposisi
+                    organik pada air tergenang.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-3 px-4 font-semibold text-sand/50">
+                    At-Tha'm (الطعم) - Rasa
+                  </td>
+                  <td class="py-3 px-4">Lidah</td>
+                  <td class="py-3 px-4 font-mono text-sand/50">
+                    - (Dikecualikan)
+                  </td>
+                  <td class="py-3 px-4 text-sand/50">
+                    Dikecualikan demi menjaga higienitas sensor non-kontak dan
+                    keselamatan pengguna.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= FOOTER ================= -->
+      <footer
+        class="mt-12 pt-6 border-t border-slateDark-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-sand/35"
+      >
+        <div>Tugas Akhir Prodistik · Smart Wudhu Water Analyzer (SWWA)</div>
+        <div>
+          &copy; <span id="year"></span> — integrasi IoT ESP32-S3 &amp;
+          verifikasi parameter wudhu
+        </div>
+      </footer>
+    </div>
+
+    <!-- ================= MODAL NOTIFIKASI OTOMATIS ================= -->
+    <div
+      id="alert-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden transition-all duration-300"
+    >
+      <div
+        class="relative w-full max-w-md rounded-2xl bg-slateDark-900 border-2 border-red-500/70 p-6 shadow-2xl shadow-red-950/70 animate-bounce-short"
+      >
+        <div class="flex items-start gap-4">
+          <div
+            class="w-12 h-12 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0"
+          >
+            <i data-lucide="alert-octagon" class="w-7 h-7 text-red-400"></i>
+          </div>
+          <div>
+            <span
+              class="text-[10px] font-mono tracking-wider px-2 py-0.5 rounded bg-red-500/20 text-red-300 uppercase font-bold border border-red-500/40"
+            >
+              PERINGATAN SISTEM OTOMATIS
+            </span>
+            <h3
+              class="text-lg font-display font-700 text-sand mt-1 leading-snug"
+            >
+              Air Tidak Memenuhi Syarat Wudhu!
+            </h3>
+            <p
+              class="text-xs text-sand/70 mt-1 leading-relaxed"
+              id="modal-desc"
+            >
+              Terdeteksi anomali signifikan pada parameter fisik/bau air wudhu.
+              Air berpotensi mutanajis dan tidak sah digunakan untuk bersuci.
+            </p>
+          </div>
+        </div>
+
+        <!-- Parameter yang dilanggar -->
+        <div
+          class="mt-4 p-3 rounded-xl bg-slateDark-950/80 border border-slateDark-700 text-xs space-y-1.5"
+        >
+          <div class="text-sand/50 font-mono text-[11px] mb-1">
+            Rincian Pelanggaran:
+          </div>
+          <div id="modal-violation-detail" class="text-red-400 font-medium">
+            • Sensor bau MQ-135 mendeteksi amonia melebihi ambang batas.
+          </div>
+        </div>
+
+        <div class="mt-5 flex gap-3 justify-end">
+          <button
+            id="modal-close-btn"
+            class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-sand text-xs font-semibold shadow-md shadow-red-950/50 transition-all"
+          >
+            Saya Mengerti &amp; Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
